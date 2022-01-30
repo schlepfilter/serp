@@ -20,9 +20,8 @@ import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML (HTMLDocument, window)
 import Web.HTML.HTMLDocument (activeElement, toDocument)
 import Web.HTML.HTMLElement (fromElement, getBoundingClientRect, toElement)
-import Web.HTML.Location (setHref)
-import Web.HTML.Window (document, location, toEventTarget)
-import Web.UIEvent.KeyboardEvent (fromEvent, key)
+import Web.HTML.Window (document, open, scrollY, toEventTarget)
+import Web.UIEvent.KeyboardEvent (KeyboardEvent, code, fromEvent, shiftKey)
 
 foreign import insertAdjacentElementImpl :: EffectFn3 Element String Element Unit
 
@@ -35,19 +34,23 @@ effectHTMLDocument = window >>= document
 effectDocument :: Effect Document
 effectDocument = toDocument <$> effectHTMLDocument
 
+name :: KeyboardEvent -> String
+name keyboardEvent = if shiftKey keyboardEvent
+    then ""
+    else "_self"
+
 handle :: Int -> String -> Event -> Effect Unit
 handle i href e = case fromEvent e of
     Nothing -> pure unit
     Just keyboardEvent
-        | show i == key keyboardEvent -> do
+        | "Digit" <> show i == code keyboardEvent -> do
             htmlDoc <- effectHTMLDocument
-            loc <- window >>= location
-            maybeActiveElement<- activeElement htmlDoc
+            maybeActiveElement <- activeElement htmlDoc
             case maybeActiveElement of
                 Nothing -> pure unit
                 Just htmlElement
                     | tagName (toElement htmlElement) == "INPUT" -> pure unit
-                    | otherwise -> setHref href loc
+                    | otherwise -> (window >>= open href (name keyboardEvent) "") *> pure unit
         | otherwise -> pure unit
 
 effectHref :: Element -> Effect String
@@ -63,6 +66,7 @@ insertDiv i result = do
     div <- createElement "div" doc
     text <- createTextNode (show $ i + 1) doc
     appendChild (Text.toNode text) (Element.toNode div)
+    y <- window >>= scrollY
     case getBoundingClientRect <$> fromElement result of
         Nothing -> pure unit
         Just rectEffect -> do
@@ -71,7 +75,7 @@ insertDiv i result = do
             setAttribute "style" ("color: white; left: " 
             <> show (rect.left - 12.0)
             <> "px;" <> "top: " 
-            <> show rect.top
+            <> show (y + rect.top)
             <> "px; position: absolute;") div
     tags <- getElementsByTagName "body" doc >>= toArray
     case head tags of
