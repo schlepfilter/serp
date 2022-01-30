@@ -42,7 +42,7 @@ handle i href e = case fromEvent e of
         | show i == key keyboardEvent -> do
             htmlDoc <- effectHTMLDocument
             loc <- window >>= location
-            maybeActiveElement<- activeElement htmlDoc
+            maybeActiveElement <- activeElement htmlDoc
             case maybeActiveElement of
                 Nothing -> pure unit
                 Just htmlElement
